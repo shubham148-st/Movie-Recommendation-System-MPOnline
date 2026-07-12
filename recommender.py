@@ -3,6 +3,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 import ast
 import os
+import difflib
 
 class Recommender:
     def __init__(self, data_path: str):
@@ -44,8 +45,20 @@ class Recommender:
 
     def get_recommendations(self, title: str, num_recommendations: int = 6):
         title_lower = title.lower()
-        if self.indices is None or title_lower not in self.indices:
-            return {"error": "Movie not found"}
+        if self.indices is None:
+            return {"error": "Movie database not loaded."}
+            
+        if title_lower not in self.indices:
+            # Try finding a close match
+            close_matches = difflib.get_close_matches(title_lower, self.indices.index.tolist(), n=1, cutoff=0.4)
+            if not close_matches:
+                # Also try substring matching
+                substring_matches = [t for t in self.indices.index.tolist() if title_lower in t]
+                if not substring_matches:
+                    return {"error": "Movie not found"}
+                title_lower = substring_matches[0]
+            else:
+                title_lower = close_matches[0]
         
         idx = self.indices[title_lower]
         if isinstance(idx, pd.Series):
